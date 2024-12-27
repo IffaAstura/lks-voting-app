@@ -71,7 +71,7 @@ jobs:
 # Pull Image to master
   master:
     name: Pull Image on master
-    runs-on: node3
+    runs-on: noderosid
     needs: build
     steps:
       - name: Update runner's docker Version, as worker module requires it
