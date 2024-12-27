@@ -71,7 +71,7 @@ jobs:
 # Pull Image to master
   master:
     name: Pull Image on master
-    runs-on: noderosid
+    runs-on: master
     needs: build
     steps:
       - name: Update runner's docker Version, as worker module requires it
@@ -210,5 +210,3 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ env.AWS_REGION }}
-          
-          ##test
