@@ -30,7 +30,7 @@ permissions:
   contents: read
 
 jobs:
-# Build image and push to ECR Production aws
+# Build image and push to ECR Production
   build:
     name: Build Image Production
     runs-on: ubuntu-latest
