@@ -1,11 +1,10 @@
 {
-    "taskDefinitionArn": "arn:aws:ecs:us-east-1:227783645737:task-definition/lks-td-result:7",
+    "taskDefinitionArn": "arn:aws:ecs:us-east-1:227783645737:task-definition/lks-td-result:12",
     "containerDefinitions": [
         {
             "name": "lks-result-container",
             "image": "227783645737.dkr.ecr.us-east-1.amazonaws.com/lks-voting-image",
-            "cpu": 512,
-            "memory": 1024,
+            "cpu": 0,
             "portMappings": [
                 {
                     "name": "http",
@@ -17,10 +16,8 @@
             ],
             "essential": true,
             "environment": [],
-            "environmentFiles": [],
             "mountPoints": [],
             "volumesFrom": [],
-            "ulimits": [],
             "logConfiguration": {
                 "logDriver": "awslogs",
                 "options": {
@@ -40,7 +37,7 @@
     "taskRoleArn": "arn:aws:iam::227783645737:role/LabRole",
     "executionRoleArn": "arn:aws:iam::227783645737:role/LabRole",
     "networkMode": "awsvpc",
-    "revision": 7,
+    "revision": 12,
     "volumes": [],
     "status": "ACTIVE",
     "requiresAttributes": [
@@ -81,15 +78,15 @@
         "FARGATE"
     ],
     "requiresCompatibilities": [
-        "EC2"
+        "FARGATE"
     ],
-    "cpu": "512",
-    "memory": "1024",
+    "cpu": "1024",
+    "memory": "2048",
     "runtimePlatform": {
         "cpuArchitecture": "X86_64",
         "operatingSystemFamily": "LINUX"
     },
-    "registeredAt": "2024-12-31T10:42:34.514Z",
+    "registeredAt": "2025-01-01T02:33:18.860Z",
     "registeredBy": "arn:aws:sts::227783645737:assumed-role/voclabs/user3722072=104408-16",
     "enableFaultInjection": false,
     "tags": []
