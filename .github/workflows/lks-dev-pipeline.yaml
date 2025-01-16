@@ -4,8 +4,8 @@ on:
     branches:
       - "dev"
     paths:
-      - .github/workflows/example_deploy_docker.yaml
-      - docker-stack.yaml
+      - .github/workflows/lks-dev-pipeline.yaml
+      - docker-stack.yml
       - README.md
 
 env:
