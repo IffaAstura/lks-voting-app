@@ -1,4 +1,4 @@
-name: Example Deploy to Amazon ECS
+name: Deploy to Amazon ECS
 
 on:
   push:
@@ -13,7 +13,7 @@ on:
 env:
   AWS_REGION: us-east-1                 
   ECR_REPOSITORY: lks-voting-image
-  ECS_SERVICE_VOTE: lks-vote-service   
+  ECS_SERVICE_VOTE: lks-vote-service
   ECS_SERVICE_RESULT: lks-result-service
   ECS_SERVICE_WORKER: lks-worker-service        
   ECS_CLUSTER: lks-voting-cluster
@@ -30,14 +30,15 @@ permissions:
   contents: read
 
 jobs:
-  builc:
-    name: build
+# Build image and push to ECR Production aws
+  build:
+    name: Build Image Production
     runs-on: ubuntu-latest
     environment: Production
     steps:
     - name: Checkout
       uses: actions/checkout@v3
-      
+
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
@@ -50,8 +51,8 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v1
 
-    - name: build
-      id: build
+    - name: Build, tag, and push image to Amazon ECR Prod
+      id: build-image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         VOTE_IMAGE_TAG: vote-${{ env.ENV }}-latest
@@ -62,15 +63,15 @@ jobs:
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$VOTE_IMAGE_TAG
         echo "::set-output name=vote_image::$ECR_REGISTRY/$ECR_REPOSITORY:$VOTE_IMAGE_TAG"
 
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$RESULT_IMAGE_TAG --build-arg aws_region=${{ env.AWS_REGION }} --build-arg copy_or_mount="copy" -f result/Dockerfile ./result
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$RESULT_IMAGE_TAG --build-arg aws_region=${{ env.AWS_REGION }} --build-arg in_aws="yes" --build-arg copy_or_mount="copy" -f result/Dockerfile ./result
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$RESULT_IMAGE_TAG
-        echo "::set-output name=result_image::$ECR_REGISTRY/$ECR_REPOSITORY:$RESULT _IMAGE_TAG"
+        echo "::set-output name=result_image::$ECR_REGISTRY/$ECR_REPOSITORY:$RESULT_IMAGE_TAG"
 
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$WORKER_IMAGE_TAG --build-arg aws_region=${{ env.AWS_REGION }} --build-arg copy_or_mount="copy" -f worker/Dockerfile ./worker
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$WORKER_IMAGE_TAG      
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$WORKER_IMAGE_TAG
         echo "::set-output name=worker_image::$ECR_REGISTRY/$ECR_REPOSITORY:$WORKER_IMAGE_TAG"
     - name: End Build
-      run: echo "Build Success"        
+      run: echo "Build Success"
 
   deploy:
     name: Deploy Application to Production
@@ -105,58 +106,61 @@ jobs:
         echo "result_image=$ECR_REGISTRY/$ECR_REPOSITORY:$RESULT_IMAGE_TAG" >> $GITHUB_ENV
         echo "worker_image=$ECR_REGISTRY/$ECR_REPOSITORY:$WORKER_IMAGE_TAG" >> $GITHUB_ENV
 
-    - name: Fill in the new image ID in the Amazon ECS task definition (Vote)
+# Paste new images to task definitions VOTE/RESULT/WORKER
+    - name: Fill in the new image ID in the Amazon ECS task definition (VOTE)
       id: task-def-vote
       uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
         task-definition: ${{ env.VOTE_TASK_DEFINITION }}
         container-name: ${{ env.VOTE_CONTAINER_NAME }}
-        image: ${{ steps.set-vars.outputs.vote_image }}
-
+        image: ${{ env.vote_image }}
+    
     - name: Fill in the new image ID in the Amazon ECS task definition (Result)
       id: task-def-result
       uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
         task-definition: ${{ env.RESULT_TASK_DEFINITION }}
         container-name: ${{ env.RESULT_CONTAINER_NAME }}
-        image: ${{ steps.set-vars.outputs.result_image }}
-
+        image: ${{ env.result_image }}
+    
     - name: Fill in the new image ID in the Amazon ECS task definition (Worker)
       id: task-def-worker
       uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
         task-definition: ${{ env.WORKER_TASK_DEFINITION }}
         container-name: ${{ env.WORKER_CONTAINER_NAME }}
-        image: ${{ steps.set-vars.outputs.worker_image }}
+        image: ${{ env.worker_image }}
 
+# Deploy new and create task definitions to Amazon ECS
     - name: Deploy Amazon ECS task definition Vote
-      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v2
       with:
         task-definition: ${{ steps.task-def-vote.outputs.task-definition }}
         service: ${{ env.ECS_SERVICE_VOTE }}
         cluster: ${{ env.ECS_CLUSTER }}
         wait-for-service-stability: true
-
+    
     - name: Deploy Amazon ECS task definition Result
-      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v2
       with:
         task-definition: ${{ steps.task-def-result.outputs.task-definition }}
-        service: ${{ env.ECS_SERVICE_RESULT}}
+        service: ${{ env.ECS_SERVICE_RESULT }}
         cluster: ${{ env.ECS_CLUSTER }}
         wait-for-service-stability: true
-
+    
     - name: Deploy Amazon ECS task definition Worker
-      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v2
       with:
         task-definition: ${{ steps.task-def-worker.outputs.task-definition }}
         service: ${{ env.ECS_SERVICE_WORKER }}
         cluster: ${{ env.ECS_CLUSTER }}
         wait-for-service-stability: true
-    
+
+# Notifications to AWS SNS
     - name: Publish SNS Notification
       run: |
         aws sns publish \
           --topic-arn ${{ secrets.AWS_SNS_ARN }} \
           --subject "Helo from Jawa Timur!" \
           --message "New version The Voting App from Jawa Timur is Released !!" \
-          --region ${{ env.AWS_REGION }}               
+          --region ${{ env.AWS_REGION }}
